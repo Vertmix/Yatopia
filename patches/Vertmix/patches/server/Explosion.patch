@@ -1,0 +1,123 @@
+diff --git a/Yatopia-Server/src/main/java/net/minecraft/world/level/Explosion.java b/../../1.16/Code/TNTPhysics/src/main/java/com/vertmix/tntrevert/nms/NewExplosion.java
+index 79008bd..c4cdb37 100644
+--- a/Yatopia-Server/src/main/java/net/minecraft/world/level/Explosion.java
++++ b/../../1.16/Code/TNTPhysics/src/main/java/com/vertmix/tntrevert/nms/NewExplosion.java
+@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPosition;
+ import net.minecraft.core.EnumDirection;
+ import net.minecraft.core.particles.Particles;
+ import net.minecraft.server.level.WorldServer;
++import net.minecraft.server.v1_16_R3.*;
+ import net.minecraft.sounds.SoundCategory;
+ import net.minecraft.sounds.SoundEffects;
+ import net.minecraft.util.MathHelper;
+@@ -135,55 +136,70 @@ public class Explosion {
+ 
+         int i;
+         int j;
++        final Chunk chunkAt = world.getChunkAt((int) posX >> 4, (int) posZ >> 4);
++        Block b = chunkAt.getType(new BlockPosition(posX, posY, posZ)).getBlock(); // TacoSpigot - get block of the explosion
++
++        if(!b.getBlockData().getMaterial().isLiquid()){ // TacoSpigot - skip calculating what blocks to blow up in water/lava
++
++            for (int k = 0; k < 16; ++k) {
++                for (i = 0; i < 16; ++i) {
++                    for (j = 0; j < 16; ++j) {
++                        if (k == 0 || k == 15 || i == 0 || i == 15 || j == 0 || j == 15) {
++                            double d0 = (double) ((float) k / 15.0F * 2.0F - 1.0F);
++                            double d1 = (double) ((float) i / 15.0F * 2.0F - 1.0F);
++                            double d2 = (double) ((float) j / 15.0F * 2.0F - 1.0F);
++                            double d3 = Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
++
++                            d0 /= d3;
++                            d1 /= d3;
++                            d2 /= d3;
++                            float f = this.size * (0.7F + this.world.random.nextFloat() * 0.6F);
++                            double d4 = this.posX;
++                            double d5 = this.posY;
++                            double d6 = this.posZ;
++
++                            for (float f1 = 0.3F; f > 0.0F; f -= 0.22500001F) {
++                                BlockPosition blockposition = new BlockPosition(d4, d5, d6);
++                                IBlockData iblockdata = this.world.getType(blockposition);
++                                if (!iblockdata.isDestroyable()) continue; // Paper
++                                Fluid fluid = iblockdata.getFluid(); // Paper
++
++                                if (iblockdata.getBlock().getBlockData().getMaterial() != Material.AIR) {
++                                    float f2 = this.source != null ?
++                                            this.source.a(this, (IBlockAccess) this.world, blockposition, iblockdata, fluid, f)
++                                            : iblockdata.getBlock().getDurability()/5.0F;
++
++                                    f -= (f2 + 0.3F) * 0.3F;
++                                }
+ 
+-        for (int k = 0; k < 16; ++k) {
+-            for (i = 0; i < 16; ++i) {
+-                for (j = 0; j < 16; ++j) {
+-                    if (k == 0 || k == 15 || i == 0 || i == 15 || j == 0 || j == 15) {
+-                        double d0 = (double) ((float) k / 15.0F * 2.0F - 1.0F);
+-                        double d1 = (double) ((float) i / 15.0F * 2.0F - 1.0F);
+-                        double d2 = (double) ((float) j / 15.0F * 2.0F - 1.0F);
+-                        double d3 = Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
+-
+-                        d0 /= d3;
+-                        d1 /= d3;
+-                        d2 /= d3;
+-                        float f = this.size * (0.7F + this.world.random.nextFloat() * 0.6F);
+-                        double d4 = this.posX;
+-                        double d5 = this.posY;
+-                        double d6 = this.posZ;
+-
+-                        for (float f1 = 0.3F; f > 0.0F; f -= 0.22500001F) {
+-                            BlockPosition blockposition = new BlockPosition(d4, d5, d6);
+-                            IBlockData iblockdata = this.world.getType(blockposition);
+-                            if (!iblockdata.isDestroyable()) continue; // Paper
+-                            Fluid fluid = iblockdata.getFluid(); // Paper
+-                            Optional<Float> optional = this.l.a(this, this.world, blockposition, iblockdata, fluid);
+-
+-                            if (optional.isPresent()) {
+-                                f -= ((Float) optional.get() + 0.3F) * 0.3F;
+-                            }
++                                Optional<Float> optional = this.l.a(this, this.world, blockposition, iblockdata, fluid);
++
++                                if (optional.isPresent()) {
++                                    f -= ((Float) optional.get() + 0.3F) * 0.3F;
++                                }
+ 
+-                            if (f > 0.0F && this.l.a(this, this.world, blockposition, iblockdata, f) && blockposition.getY() < 256 && blockposition.getY() >= 0) { // CraftBukkit - don't wrap explosions
+-                                set.add(blockposition);
+-                                // Paper start - prevent headless pistons from forming
+-                                if (!com.destroystokyo.paper.PaperConfig.allowHeadlessPistons && iblockdata.getBlock() == Blocks.MOVING_PISTON) {
+-                                    TileEntity extension = this.world.getTileEntity(blockposition);
+-                                    if (extension instanceof TileEntityPiston && ((TileEntityPiston) extension).isHead()) {
+-                                       EnumDirection direction = iblockdata.get(BlockPistonExtension.FACING);
+-                                       set.add(blockposition.shift(direction.opposite()));
++                                if (f > 0.0F && this.l.a(this, this.world, blockposition, iblockdata, f) && blockposition.getY() < 256 && blockposition.getY() >= 0) { // CraftBukkit - don't wrap explosions
++                                    set.add(blockposition);
++                                    // Paper start - prevent headless pistons from forming
++                                    if (!com.destroystokyo.paper.PaperConfig.allowHeadlessPistons && iblockdata.getBlock() == Blocks.MOVING_PISTON) {
++                                        TileEntity extension = this.world.getTileEntity(blockposition);
++                                        if (extension instanceof TileEntityPiston && ((TileEntityPiston) extension).isHead()) {
++                                            EnumDirection direction = iblockdata.get(BlockPistonExtension.FACING);
++                                            set.add(blockposition.shift(direction.opposite()));
++                                        }
+                                     }
++                                    // Paper end
+                                 }
+-                                // Paper end
+-                            }
+ 
+-                            d4 += d0 * 0.30000001192092896D;
+-                            d5 += d1 * 0.30000001192092896D;
+-                            d6 += d2 * 0.30000001192092896D;
++                                d4 += d0 * 0.30000001192092896D;
++                                d5 += d1 * 0.30000001192092896D;
++                                d6 += d2 * 0.30000001192092896D;
++                            }
+                         }
+                     }
+                 }
+             }
++
+         }
+ 
+         this.blocks.addAll(set);
